@@ -1,0 +1,22 @@
+// Reports content the owner still needs to supply. Exit code 1 while anything is missing (use with --strict in CI before launch).
+import fs from "node:fs";
+const read = (p) => fs.readFileSync(p, "utf8");
+const missing = [];
+const site = read("src/content/site.ts");
+for (const k of ["github", "linkedin", "email"]) if (new RegExp(`${k}: null`).test(site)) missing.push(`Profile link: ${k}`);
+if (!fs.existsSync("public/resume/Uttam-Singh-Resume.pdf")) missing.push("Resume PDF at public/resume/Uttam-Singh-Resume.pdf");
+if (!fs.existsSync("public/images/personal/main-profile-pic.jpeg")) missing.push("Portrait at public/images/personal/main-profile-pic.jpeg");
+const projects = read("src/content/projects.ts");
+const count = (re) => (projects.match(re) ?? []).length;
+const n = count(/repositoryUrl: null/g);
+if (n) missing.push(`Repository URL for ${n} project(s)`);
+const c = count(/individual: null/g);
+if (c) missing.push(`Individual contribution write-up for ${c} project(s)`);
+const e = count(/measured: \[\]/g);
+if (e) missing.push(`Measured results for ${e} project(s) (leave empty if none exist)`);
+if (/issueDate: null/.test(read("src/content/education.ts"))) missing.push("Certification issue dates and credential URLs");
+const confirm = (read("src/content/photos.ts").match(/confirm: \[\"/g) ?? []).length;
+if (confirm) missing.push(`${confirm} photo(s) with facts still to confirm (see public/images/personal/image-context.md)`);
+if (/status: "to-confirm"/.test(read("src/content/journey.ts"))) missing.push("Journey milestones marked to-confirm (school project and paper, JavaJamboree date)");
+console.log(missing.length ? "Content still needed:\n- " + missing.join("\n- ") : "All content dependencies are filled.");
+process.exit(missing.length && process.argv.includes("--strict") ? 1 : 0);
